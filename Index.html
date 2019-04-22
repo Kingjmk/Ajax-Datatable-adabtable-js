@@ -1,5 +1,15 @@
 <!-- This was made with MVC format with Modren Admin template -->
-<!-- Modren admin link : https://themeforest.net/item/modern-admin-clean-bootstrap-4-dashboard-html-template/21430660 -->
+<!-- Modren admin link : https://themeforest.net/item/modern-admin-clean-bootstrap-4-dashboard-html-template/21430660 
+
+If you don't want to use a template
+you need at least the following extensions
+JQuery
+Bootstrap4
+Sweetalert2.js
+datatable.js
+blockui
+
+-->
 
 <section id="dom">
     <div class="row">
@@ -63,3 +73,7 @@
 </section>
 <script src="~/ajaxdatatable.js" type="text/javascript"></script>
 <script src="~/filter.js" type="text/javascript"></script>
+<script>
+    var table = $("#Ajax_Table");
+    CustomSearch(table);
+</script>
