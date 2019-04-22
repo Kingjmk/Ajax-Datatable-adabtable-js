@@ -4,7 +4,7 @@ Code by Jameel Hamdan
 Don't forget to check the HTML file for reference
 */
 
-function CustomBootBoxSearch(table) {
+function CustomSearch(table) {
     //Searchbar div 
     //var searchwrapper = $('#' + table.tables().nodes().to$().attr('id') + '_filter');
     var searchwrapper = $('.heading-elements ul');
