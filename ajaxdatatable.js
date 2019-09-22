@@ -1,46 +1,158 @@
-//Form Save & Load Plugin
-;(function ($) {
-    $.fn.toJSON = function () {
-        var $elements = {};
-        var $form = $(this);
-        $form.find('input, select, textarea').each(function () {
-            ;
-            var name = $(this).data('id')
-            var type = $(this).attr('type')
-            if (name) {
-                var $value;
-                if (type == 'radio') {
-                    $value = $('input[data-id=' + name + ']:checked', $form).val()
-                } else if (type == 'checkbox') {
-                    $value = $(this).is(':checked')
-                } else {
-                    $value = $(this).val()
+$(function () {
+    //Form Save & Load Plugin
+    (function ($) {
+        $.fn.toJSON = function () {
+            var $elements = {};
+            var $form = $(this);
+            $form.find('input, select, textarea').each(function () {
+                ;
+                var name = $(this).data('id')
+                var type = $(this).attr('type')
+                if (name) {
+                    var $value;
+                    if (type == 'radio') {
+                        $value = $('input[data-id=' + name + ']:checked', $form).val()
+                    } else if (type == 'checkbox') {
+                        $value = $(this).is(':checked')
+                    } else {
+                        $value = $(this).val()
+                    }
+                    $elements[$(this).data('id')] = $value
                 }
-                $elements[$(this).data('id')] = $value
-            }
-        });
-        return JSON.stringify($elements)
-    };
+            });
+            return JSON.stringify($elements)
+        };
 
-    $.fn.fromJSON = function (json_string) {
-        var $form = $(this);
-        var data = JSON.parse(json_string);
-        $.each(data, function (key, value) {
-            var $elem = $('[data-id="' + key + '"]', $form);
-            var type = $elem.first().attr('type');
-            if (type == 'radio') {
-                $('[data-id="' + key + '"][value="' + value + '"]').prop('checked', true)
-            } else if (type == 'checkbox' && (value == true || value == 'true')) {
-                $('[data-id="' + key + '"]').prop('checked', true)
+        $.fn.fromJSON = function (json_string) {
+            var $form = $(this);
+            var data = JSON.parse(json_string);
+            $.each(data, function (key, value) {
+                var $elem = $('[data-id="' + key + '"]', $form);
+                var type = $elem.first().attr('type');
+                if (type == 'radio') {
+                    $('[data-id="' + key + '"][value="' + value + '"]').prop('checked', true)
+                } else if (type == 'checkbox' && (value == true || value == 'true')) {
+                    $('[data-id="' + key + '"]').prop('checked', true)
+                } else {
+                    $elem.val(value)
+                }
+            })
+        };
+    }(jQuery));
+
+    if (typeof($.datatable_functions_create_row) !== 'function'){
+        $.datatable_functions_create_row = function(row, data, dataIndex) {};
+    }
+
+
+    var filter_form_data = '';
+    var customTable;
+    var HeaderButtonsHTML = "";
+
+    function get_columns_defs(table_head_object,){
+        let i = 0;
+        let customColumns = [];
+        //Get Columns insert any more extra parameters here using data-whatever
+        let ActionButtonsHTML = "";
+        ActionButtonsHTML = $("#button_template").html();
+        if (typeof (ActionButtonsHTML) === 'undefined') {
+            ActionButtonsHTML = "";
+        }
+
+        HeaderButtonsHTML = $("#button-header-template").html();
+        if (typeof (HeaderButtonsHTML) === 'undefined') {
+            HeaderButtonsHTML = "";
+        } else {
+
+        }
+        table_head_object.each(function () {
+            let colname = $(this).data("name");
+            let colrelatedname = $(this).data("related");
+            if (typeof (colrelatedname) == 'undefined') {
+                colrelatedname = colname
+            }
+
+            let custom_column = {};
+
+            if (colname.toLowerCase() === "actions") {
+                custom_column = {
+                    "targets": i,
+                    "className": "align-middle text-dark",
+                    "data": null,
+                    "searchable": false,
+                    "orderable": false,
+                    "visible": true,
+                    "responsivePriority": 1,
+                    "render": function (data, type, row) {
+                        let adjustedhtmlcontent = ActionButtonsHTML.replace(/data-id=""/g, 'data-id="' + row.id + '"');
+                        adjustedhtmlcontent = adjustedhtmlcontent.replace(/replace-with-id/g, row.id);
+
+                        adjustedhtmlcontent = adjustedhtmlcontent.replace(/\/0000/g, "/" + row.id);
+                        adjustedhtmlcontent = adjustedhtmlcontent.replace(/id="dropdown_id_"/g, 'id="dropdown_id_' + row.id + '"');
+                        adjustedhtmlcontent = adjustedhtmlcontent.replace(/aria-labelledby="dropdown_id_"/g, 'aria-labelledby="dropdown_id_' + row.id + '"');
+                        return adjustedhtmlcontent;
+                    },
+                };
+            } else if (colname.toLowerCase() === "id") {
+                if ($(this).data('enabled') !== true) {
+                    customColumns.push({
+                        "targets": i,
+                        "className": "align-middle text-dark",
+                        "data": colname,
+                        "name": colrelatedname,
+                        "searchable": false,
+                        "visible": false,
+                        "responsivePriority": 99,
+                    });
+                } else {
+                    custom_column = {
+                        "targets": i,
+                        "className": "align-middle text-dark",
+                        "data": colname,
+                        "name": colrelatedname,
+                        "searchable": true,
+                        "visible": true,
+                        "responsivePriority": i + 10,
+                    };
+                }
+
             } else {
-                $elem.val(value)
-            }
-        })
-    };
-}(jQuery));
+                if (colname === colrelatedname) {
+                    custom_column = {
+                        "targets": i,
+                        "className": "align-middle text-dark",
+                        "data": colname,
+                        "searchable": true,
+                        "visible": true,
+                        "responsivePriority": i + 10,
+                    };
+                } else {
+                    custom_column = {
+                        "targets": i,
+                        "className": "align-middle text-dark",
+                        "data": colname,
+                        "name": colrelatedname,
+                        "searchable": true,
+                        "visible": true,
+                        "responsivePriority": i + 10,
+                    };
+                }
 
-$(document).ready(function () {
-    let filter_form_data = '';
+            }
+            if ($(this).data('custom-rep') === true) {
+                custom_column['render'] = {
+                    _: 'display',
+                    sort: 'value',
+                    filter: 'value',
+                }
+            }
+            customColumns.push(custom_column);
+
+            i++;
+        });
+
+        return customColumns;
+    }
 
     function render_filter_field(object, htmlclass) {
         let nameoffield = object.header().textContent;
@@ -120,26 +232,24 @@ $(document).ready(function () {
         //Searchbar div
         let searchwrapper = $('#datatable_filter');
         searchwrapper.html('');
-        searchwrapper.prepend('<a class="btn info" href="#" title="Filter" id="customsearchbutton" data-tableid="' + table.tables().nodes().to$().attr('id') + '"><i class="la la-filter"></i></a>');
-        searchwrapper.prepend('<a class="btn danger" href="#" title="Remove Filtering" id="customsearchcancelbutton" data-tableid="' + table.tables().nodes().to$().attr('id') + '"><i class="la la-ban danger"></i></a>')
+        searchwrapper.prepend('<a class="btn info" href="#" title="Filter" id="customsearchbutton" data-tableid="' + table.tables().nodes().to$().attr('id') + '"><i class="la la-filter font-large-1"></i></a>');
+        searchwrapper.prepend('<a class="btn danger" href="#" title="Remove Filtering" id="customsearchcancelbutton" data-tableid="' + table.tables().nodes().to$().attr('id') + '"><i class="la la-ban danger font-large-1"></i></a>')
 
         var header_filter_html = '';
         table.columns().every(function () {
             if ($(this.header()).data('header-filter') === true) {
-                header_filter_html = header_filter_html + render_filter_field(this, 'header-filters width-100 d-inline-block');
-                console.log(render_filter_field(this, 'width-100'));
+                header_filter_html = header_filter_html + render_filter_field(this, 'datatable-header-filter d-inline-flex input-sm');
             }
         });
         searchwrapper.prepend(header_filter_html);
         $('#customsearchcancelbutton').hide();
     }
 
-    $(document).on('change', '.header-filters .customSearchInput', function (event) {
+    $(document).on('change', '.datatable-header-filter .customSearchInput', function (event) {
         if (typeof ($(this).val()) !== 'undefined') {
             let tableid = $('#customsearchbutton').data('tableid');
             let mytable = $('#' + tableid).DataTable();
-            mytable.columns($(this).data('id')).search($(this).val(), true, true, false);
-            mytable.columns().draw();
+            mytable.columns($(this).data('id')).search($(this).val(), true, true, false).draw();
             $('#customsearchcancelbutton').show();
         }
     });
@@ -264,7 +374,7 @@ $(document).ready(function () {
         }
     });
 
-    var customTable;
+
     $(document).ready(function () {
         let menudata = $("#datatable").data('menu');
         let lengthMenuSize = 10;
@@ -340,19 +450,25 @@ $(document).ready(function () {
             }
         }
 
-        let dom = "<'row mb-1'<'col-sm-6 header-btn-wrapper none-print'><'col-sm-6'B>>" + "<'row'<'col-sm-6'l><'col-sm-6'f>>" + "<'row'<'col-12'tr>>" + "<'row'<'col-sm-5'i><'col-sm-7'p>>";
+        let customColumns = get_columns_defs($('#datatable thead th'));
+
+        let dom = "<'row mb-1'<'col-sm-6 header-btn-wrapper none-print'><'col-sm-6'B>>" + "<'row'<'col-sm-6 vertical_center'l><'col-sm-6'f>>" + "<'row'<'col-12'tr>>" + "<'row'<'col-sm-5'i><'col-sm-7'p>>";
         let defaults = {
             orderCellsTop: true,
             colReorder: true,
             processing: true,
             serverSide: true,
             responsive: true,
-            paging: true,
-            fixedHeader: false,
-            autoWidth: false,
             pageLength: parseInt(lengthMenuSize),
             dom: dom,
             buttons: buttons,
+            columnDefs: customColumns,
+            autoWidth:false,
+            createdRow: function (row, data, dataIndex) {
+                $(row).attr('data-id', data.id);
+                //override this function to run custom code on add row
+                $.datatable_functions_create_row(row, data, dataIndex);
+            },
             language: {
                 "lengthMenu": lengthMenu,
                 "zeroRecords": function () {
@@ -363,98 +479,6 @@ $(document).ready(function () {
             },
 
         };
-
-        //Get Columns insert any more extra parameters here using data-whatever
-        let ActionButtonsHTML = "";
-        ActionButtonsHTML = $("#button_template").html();
-        if (typeof (ActionButtonsHTML) === 'undefined') {
-            ActionButtonsHTML = "";
-        }
-
-        let HeaderButtonsHTML = "";
-        HeaderButtonsHTML = $("#button-header-template").html();
-        if (typeof (HeaderButtonsHTML) === 'undefined') {
-            HeaderButtonsHTML = "";
-        } else {
-
-        }
-
-        let customColumns = [];
-        let i = 0;
-        $('#datatable thead th').each(function () {
-            let colname = $(this).data("name");
-            let colrelatedname = $(this).data("related");
-            if (typeof (colrelatedname) == 'undefined') {
-                colrelatedname = colname
-            }
-
-            if (colname.toLowerCase() === "actions") {
-                customColumns.push({
-                    "targets": i,
-                    "className": "align-middle text-dark",
-                    "data": null,
-                    "searchable": false,
-                    "orderable": false,
-                    "visible": true,
-                    "render": function (data, type, row) {
-                        let adjustedhtmlcontent = ActionButtonsHTML.replace(/data-id=""/g, 'data-id="' + row.id + '"');
-                        adjustedhtmlcontent = adjustedhtmlcontent.replace(/replace-with-id/g, row.id);
-
-                        adjustedhtmlcontent = adjustedhtmlcontent.replace(/\/0000/g, "/" + row.id);
-                        adjustedhtmlcontent = adjustedhtmlcontent.replace(/id="dropdown_id_"/g, 'id="dropdown_id_' + row.id + '"');
-                        adjustedhtmlcontent = adjustedhtmlcontent.replace(/aria-labelledby="dropdown_id_"/g, 'aria-labelledby="dropdown_id_' + row.id + '"');
-                        return adjustedhtmlcontent;
-                    },
-                });
-
-            } else if (colname.toLowerCase() === "id") {
-                if ($(this).data('enabled') !== true) {
-                    customColumns.push({
-                        "targets": i,
-                        "className": "align-middle text-dark",
-                        "data": colname,
-                        "name": colrelatedname,
-                        "searchable": false,
-                        "visible": false,
-                        "responsivePriority": 99,
-                    });
-                } else {
-                    customColumns.push({
-                        "targets": i,
-                        "className": "align-middle text-dark",
-                        "data": colname,
-                        "name": colrelatedname,
-                        "searchable": true,
-                        "visible": true,
-                        "responsivePriority": i + 1,
-                    });
-                }
-
-            } else {
-                if (colname === colrelatedname) {
-                    customColumns.push({
-                        "targets": i,
-                        "className": "align-middle text-dark",
-                        "data": colname,
-                        "searchable": true,
-                        "visible": true,
-                        "responsivePriority": i + 1,
-                    });
-                } else {
-                    customColumns.push({
-                        "targets": i,
-                        "className": "align-middle text-dark",
-                        "data": colname,
-                        "name": colrelatedname,
-                        "searchable": true,
-                        "visible": true,
-                        "responsivePriority": i + 1,
-                    });
-                }
-
-            }
-            i++;
-        });
 
         //handle non ajax tables
         if (typeof ($('#datatable').data('ajax')) !== 'undefined') {
@@ -476,13 +500,15 @@ $(document).ready(function () {
                             Refresh(customTable);
                         }
                     }
+                    if ($('#datatable').data('hover-row')) {
+                        $('#datatable').addClass('datatable-change-row-color-on-hover');
+                    }
 
                     $('#datatable_filter').html('');
                     if ($('#datatable').data('filter')) {
                         Filter(customTable);
                     }
                 },
-                columnDefs: customColumns,
                 "ajax": function (data, callback, settings) {
 
                     var urlParams = new URLSearchParams(window.location.search);
@@ -511,43 +537,32 @@ $(document).ready(function () {
                                 $('#customsearchcancelbutton').show();
                             }
                         }
-
                     });
                 },
             }));
         } else {
             //none ajax datatable
-            customTable = $('#datatable').DataTable({
+            customTable = $('#datatable').DataTable($.extend(true, {}, defaults, {
                 "initComplete": function (settings, json) {
                     setTimeout(function () {
                         if ($('#datatable').data('filter')) {
                             Filter(customTable);
                         }
+
+                        if ($('#datatable').data('hover-row')) {
+                            $('#datatable').addClass('datatable-change-row-color-on-hover');
+                        }
                     }, 100);
                 },
-                orderCellsTop: true,
-                colReorder: true,
-                responsive: true,
-                paging: true,
-                fixedHeader: false,
-                autoWidth: false,
-                pageLength: parseInt(lengthMenuSize),
-                dom: dom,
-                columnDefs: customColumns,
-                buttons: buttons,
-                language: {
-                    "lengthMenu": lengthMenu,
-                    "zeroRecords": function () {
-                        return "No records found";
-                    },
-                    "processing": '<i class="la la-spinner la-spin"></i> Loading...',
-                    "loadingRecords": '<i class="la la-spinner la-spin"></i> Loading...',
-                },
-            });
+                processing: false,
+                serverSide: false,
+            }));
             $('.header-btn-wrapper').append(HeaderButtonsHTML);
         }
 
-        new $.fn.dataTable.FixedHeader(customTable);
+        if (customTable.length) {
+            new $.fn.dataTable.FixedHeader(customTable);
+        }
 
         $('#datatable tbody').on('click', 'td:not(:last-child)', function () {
             if ($('#datatable').data('selectable')) {
@@ -575,10 +590,13 @@ $(document).ready(function () {
                 $(this).data('all', true);
                 $(this).html('<i class="ft ft-check"></i> Select All');
             }
-
-
         });
 
+        $(document).on('click', '#datatable tbody tr td', function () {
+            if ($(this).parents('tr').data('url') && $('#datatable').data('hover-row')) {
+                window.location = $(this).parents('tr').data('url');
+            }
+        });
     });
 
 });
