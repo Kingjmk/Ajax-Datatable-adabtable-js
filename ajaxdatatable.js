@@ -40,16 +40,38 @@ $(function () {
         };
     }(jQuery));
 
-    if (typeof($.datatable_functions_create_row) !== 'function'){
-        $.datatable_functions_create_row = function(row, data, dataIndex) {};
+    if (typeof ($.datatable_functions_create_row) !== 'function') {
+        $.datatable_functions_create_row = function (row, data, dataIndex) {
+        };
     }
-
 
     var filter_form_data = '';
     var customTable;
     var HeaderButtonsHTML = "";
 
-    function get_columns_defs(table_head_object,){
+    function get_default_order(table_head_object,) {
+        var custom_order = [];
+
+        var i = 0;
+        table_head_object.each(function () {
+            // takes 'asc', 'desc'
+            if (typeof ($(this).data('default-order')) !== 'undefined') {
+                custom_order.push([i, $(this).data('default-order')]);
+            }
+            i++;
+        });
+
+        return custom_order
+    }
+
+    function get_column_enabled(column, default_value=true) {
+        let value = $(column).data('enabled');
+        if (typeof (value) !== 'undefined') return value;
+
+        return default_value
+    }
+
+    function get_columns_defs(table_head_object,) {
         let i = 0;
         let customColumns = [];
         //Get Columns insert any more extra parameters here using data-whatever
@@ -62,9 +84,8 @@ $(function () {
         HeaderButtonsHTML = $("#button-header-template").html();
         if (typeof (HeaderButtonsHTML) === 'undefined') {
             HeaderButtonsHTML = "";
-        } else {
-
         }
+
         table_head_object.each(function () {
             let colname = $(this).data("name");
             let colrelatedname = $(this).data("related");
@@ -73,11 +94,16 @@ $(function () {
             }
 
             let custom_column = {};
+            let default_custom_column = {
+                "targets": i,
+                "className": "align-middle text-dark",
+                "searchable": get_column_enabled(this),
+                "visible": get_column_enabled(this),
+                "responsivePriority": i + 10,
+            };
 
             if (colname.toLowerCase() === "actions") {
                 custom_column = {
-                    "targets": i,
-                    "className": "align-middle text-dark",
                     "data": null,
                     "searchable": false,
                     "orderable": false,
@@ -86,59 +112,31 @@ $(function () {
                     "render": function (data, type, row) {
                         let adjustedhtmlcontent = ActionButtonsHTML.replace(/data-id=""/g, 'data-id="' + row.id + '"');
                         adjustedhtmlcontent = adjustedhtmlcontent.replace(/replace-with-id/g, row.id);
-
                         adjustedhtmlcontent = adjustedhtmlcontent.replace(/\/0000/g, "/" + row.id);
                         adjustedhtmlcontent = adjustedhtmlcontent.replace(/id="dropdown_id_"/g, 'id="dropdown_id_' + row.id + '"');
                         adjustedhtmlcontent = adjustedhtmlcontent.replace(/aria-labelledby="dropdown_id_"/g, 'aria-labelledby="dropdown_id_' + row.id + '"');
                         return adjustedhtmlcontent;
                     },
-                };
-            } else if (colname.toLowerCase() === "id") {
-                if ($(this).data('enabled') !== true) {
-                    customColumns.push({
-                        "targets": i,
-                        "className": "align-middle text-dark",
-                        "data": colname,
-                        "name": colrelatedname,
-                        "searchable": false,
-                        "visible": false,
-                        "responsivePriority": 99,
-                    });
-                } else {
-                    custom_column = {
-                        "targets": i,
-                        "className": "align-middle text-dark",
-                        "data": colname,
-                        "name": colrelatedname,
-                        "searchable": true,
-                        "visible": true,
-                        "responsivePriority": i + 10,
-                    };
                 }
-
+            } else if (colname.toLowerCase() === "id") {
+                custom_column = {
+                    "visible": get_column_enabled(this, false),
+                    "data": colname,
+                    "name": colrelatedname,
+                };
             } else {
                 if (colname === colrelatedname) {
                     custom_column = {
-                        "targets": i,
-                        "className": "align-middle text-dark",
                         "data": colname,
-                        "searchable": true,
-                        "visible": true,
-                        "responsivePriority": i + 10,
                     };
                 } else {
                     custom_column = {
-                        "targets": i,
-                        "className": "align-middle text-dark",
                         "data": colname,
                         "name": colrelatedname,
-                        "searchable": true,
-                        "visible": true,
-                        "responsivePriority": i + 10,
                     };
                 }
-
             }
+
             if ($(this).data('custom-rep') === true) {
                 custom_column['render'] = {
                     _: 'display',
@@ -146,8 +144,9 @@ $(function () {
                     filter: 'value',
                 }
             }
-            customColumns.push(custom_column);
 
+            custom_column = $.extend(default_custom_column, custom_column);
+            customColumns.push(custom_column);
             i++;
         });
 
@@ -254,7 +253,7 @@ $(function () {
         }
     });
 
-    //Search Button Event Listener
+//Search Button Event Listener
     $(document).on('click', '#customsearchcancelbutton', function (event) {
         let tableid = $(this).data('tableid');
         let mytable = $('#' + tableid).DataTable();
@@ -451,6 +450,7 @@ $(function () {
         }
 
         let customColumns = get_columns_defs($('#datatable thead th'));
+        let order_defaults = get_default_order($('#datatable thead th'));
 
         let dom = "<'row mb-1'<'col-sm-6 header-btn-wrapper none-print'><'col-sm-6'B>>" + "<'row'<'col-sm-6 vertical_center'l><'col-sm-6'f>>" + "<'row'<'col-12'tr>>" + "<'row'<'col-sm-5'i><'col-sm-7'p>>";
         let defaults = {
@@ -463,7 +463,8 @@ $(function () {
             dom: dom,
             buttons: buttons,
             columnDefs: customColumns,
-            autoWidth:false,
+            order: order_defaults,
+            autoWidth: false,
             createdRow: function (row, data, dataIndex) {
                 $(row).attr('data-id', data.id);
                 //override this function to run custom code on add row
@@ -508,6 +509,7 @@ $(function () {
                     if ($('#datatable').data('filter')) {
                         Filter(customTable);
                     }
+                    $('#datatable').addClass('datatable-rendered');
                 },
                 "ajax": function (data, callback, settings) {
 
@@ -553,6 +555,8 @@ $(function () {
                             $('#datatable').addClass('datatable-change-row-color-on-hover');
                         }
                     }, 100);
+                    $('#datatable').addClass('datatable-rendered');
+
                 },
                 processing: false,
                 serverSide: false,
@@ -593,10 +597,11 @@ $(function () {
         });
 
         $(document).on('click', '#datatable tbody tr td', function () {
-            if ($(this).parents('tr').data('url') && $('#datatable').data('hover-row')) {
-                window.location = $(this).parents('tr').data('url');
+            if ($(this).parents('tr').data('id') && $('#datatable').data('hover-row') && $('#datatable').data('row-url')) {
+                var data_id = $(this).parents('tr').data('id');
+                window.location = $('#datatable').data('row-url').replace(/\/0000/g, "/" + data_id);
             }
         });
     });
-
-});
+})
+;
